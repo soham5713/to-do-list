@@ -22,6 +22,9 @@ function App() {
   useEffect(() => {
     if (tasks.length > 0) {
       localStorage.setItem('tasks', JSON.stringify(tasks));
+    } else {
+      // If no tasks are left, clear localStorage
+      localStorage.removeItem('tasks');
     }
   }, [tasks]);
 
@@ -58,11 +61,16 @@ function App() {
   const deleteTask = (index) => {
     const updatedTasks = tasks.filter((_, i) => i !== index);
     setTasks(updatedTasks);
+    // If tasks array becomes empty, remove tasks from localStorage
+    if (updatedTasks.length === 0) {
+      localStorage.removeItem('tasks');
+    }
   };
 
   const clearAllTasks = () => {
     if (window.confirm("Are you sure you want to clear all tasks?")) {
       setTasks([]);
+      localStorage.removeItem('tasks'); // Ensure clearing localStorage when clearing all tasks
     }
   };
 
@@ -123,7 +131,7 @@ function App() {
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className={`px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'text-black' : 'bg-white text-black'}`}
+            className={`px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'text-white' : 'bg-white text-black'}`}
           />
           <select
             value={priority}
