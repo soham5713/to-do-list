@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon } from '@heroicons/react/solid';
-import { signInWithGoogle, signOutUser, listenForTasks, addTask, updateTask, deleteTask } from './firebase';
+import { signInWithGoogle, signOutUser, listenForTasks, addTask, deleteTask, getCurrentUser } from './firebase';
 
 function App() {
   const [tasks, setTasks] = useState([]);
@@ -14,6 +14,13 @@ function App() {
   const [isDueDateAsc, setIsDueDateAsc] = useState(true);
 
   useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser); // Set the user if they are already logged in
+    }
+  }, []);
+
+  useEffect(() => {
     if (user) {
       const unsubscribe = listenForTasks(user.uid, (fetchedTasks) => {
         setTasks(fetchedTasks); // Set state when tasks are updated
@@ -21,8 +28,7 @@ function App() {
       return () => unsubscribe(); // Cleanup the listener on unmount
     }
   }, [user]); // This will rerun when user changes
-
-
+  
   const handleLogin = async () => {
     try {
       const loggedInUser = await signInWithGoogle();
@@ -51,7 +57,7 @@ function App() {
         userId: user.uid,
         id: new Date().toISOString(),
       };
-
+  
       // Add task to Firestore
       try {
         await addTask(task); // Firebase add task function
@@ -65,7 +71,6 @@ function App() {
       alert('Task cannot be empty!');
     }
   };
-
 
   const deleteTaskHandler = (index) => {
     const taskId = tasks[index].id;
@@ -223,7 +228,7 @@ function App() {
           </li>
         ))}
       </ul>
-
+      
       <button
         onClick={handleLogout}
         className="my-10 px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition"
