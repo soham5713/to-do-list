@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon } from '@heroicons/react/solid';
-import { getTasks, addTask, updateTask, deleteTask} from './firebase';
+import { getTasks, addTask, updateTask, deleteTask, clearAllTasksFromFirebase } from './firebase';
 
 function App() {
   const [tasks, setTasks] = useState([]);
