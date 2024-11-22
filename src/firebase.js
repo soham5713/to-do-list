@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -19,25 +19,38 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Set authentication persistence to local to stay logged in after page refresh
-setPersistence(auth, browserLocalPersistence)
-  .catch((error) => console.error('Error setting persistence:', error));
-
-// Google login function
+// Google login function (redirect method)
 export const signInWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    return user; // Return user information
+    await signInWithRedirect(auth, provider); // Use redirect instead of popup
   } catch (error) {
     console.error(error);
     throw new Error('Google Sign-In failed');
   }
 };
 
+// Handle result of the redirect method
+export const handleRedirectResult = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      const user = result.user;
+      console.log('Logged in user:', user);
+      // Optionally, return the user or update UI
+      return user;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 // Sign-out function
 export const signOutUser = async () => {
-  await signOut(auth);
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error(error);
+  }
 };
 
 // Fetch all tasks for the currently signed-in user
@@ -66,26 +79,31 @@ export const listenForTasks = (userId, callback) => {
 
 // Add new task
 export const addTask = async (task) => {
-  // Make sure to include the userId (firebase user UID)
-  const taskWithUser = { ...task, userId: auth.currentUser.uid };
-  await addDoc(collection(db, "tasks"), taskWithUser);
+  try {
+    await addDoc(collection(db, "tasks"), task);
+  } catch (error) {
+    console.error('Error adding task:', error);
+  }
 };
 
 // Update existing task
 export const updateTask = async (id, updatedTask) => {
-  const taskDoc = doc(db, "tasks", id);
-  await updateDoc(taskDoc, updatedTask);
+  try {
+    const taskDoc = doc(db, "tasks", id);
+    await updateDoc(taskDoc, updatedTask);
+  } catch (error) {
+    console.error('Error updating task:', error);
+  }
 };
 
 // Delete task
 export const deleteTask = async (id) => {
-  const taskDoc = doc(db, "tasks", id);
-  await deleteDoc(taskDoc);
-};
-
-// Check if user is logged in and provide the user's UID
-export const getCurrentUser = () => {
-  return auth.currentUser; // Returns null if the user is not logged in
+  try {
+    const taskDoc = doc(db, "tasks", id);
+    await deleteDoc(taskDoc);
+  } catch (error) {
+    console.error('Error deleting task:', error);
+  }
 };
 
 export { auth };
