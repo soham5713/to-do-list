@@ -131,7 +131,7 @@ function App() {
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className={`px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'text-black' : 'bg-white text-black'}`}
+            className={`px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'text-white' : 'bg-white text-black'}`}
           />
           <select
             value={priority}
@@ -182,19 +182,31 @@ function App() {
               : 'bg-white hover:bg-gray-100'} `}
           >
             <div className="flex justify-between items-center w-full">
-              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                <span className="text-lg font-semibold">{task.text}</span>
-                <span className="text-sm text-gray-500">{task.dueDate}</span>
-              </div>
+              <span
+                onClick={() => toggleTaskCompletion(index)}
+                className={`text-black cursor-pointer text-lg ${task.completed ? 'line-through text-gray-500' : ''}`}
+              >
+                {task.text}
+              </span>
               <div className="flex items-center gap-2">
-                <button onClick={() => toggleTaskCompletion(index)}>
-                  {task.completed ? 'Unmark' : 'Mark'} as Done
+                <button
+                  onClick={() => {
+                    setEditIndex(index);
+                    setNewTask(task.text);
+                    setDueDate(task.dueDate);
+                    setPriority(task.priority);
+                  }}
+                  className="text-yellow-500 hover:text-yellow-700 transition"
+                  aria-label="Edit task"
+                >
+                  <PencilIcon className="h-6 w-6" />
                 </button>
-                <button onClick={() => setEditIndex(index)} className="text-blue-500">
-                  <PencilIcon className="h-5 w-5" />
-                </button>
-                <button onClick={() => deleteTask(index)} className="text-red-500">
-                  <TrashIcon className="h-5 w-5" />
+                <button
+                  onClick={() => deleteTask(index)}
+                  className="text-red-500 hover:text-red-700 transition"
+                  aria-label="Delete task"
+                >
+                  <TrashIcon className="h-6 w-6" />
                 </button>
               </div>
             </div>
@@ -206,3 +218,5 @@ function App() {
 }
 
 export default App;
+
+this is my to do list app
