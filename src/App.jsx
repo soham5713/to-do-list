@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon } from '@heroicons/react/solid';
+import { getTasks, addTask, updateTask, deleteTask, listenForTasks } from './firebase';
 
 function App() {
   const [tasks, setTasks] = useState([]);
@@ -12,37 +13,32 @@ function App() {
   const [isPriorityAsc, setIsPriorityAsc] = useState(true);
   const [isDueDateAsc, setIsDueDateAsc] = useState(true);
 
+  // Fetch tasks from Firebase in real-time
   useEffect(() => {
-    const storedTasks = localStorage.getItem('tasks');
-    if (storedTasks) {
-      setTasks(JSON.parse(storedTasks));
-    }
+    const unsubscribe = listenForTasks((fetchedTasks) => {
+      setTasks(fetchedTasks);
+    });
+    return () => unsubscribe(); // Cleanup the listener on unmount
   }, []);
-
-  useEffect(() => {
-    if (tasks.length > 0) {
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-    } else {
-      // If no tasks are left, clear localStorage
-      localStorage.removeItem('tasks');
-    }
-  }, [tasks]);
 
   const addOrUpdateTask = () => {
     if (newTask.trim()) {
+      const task = {
+        text: newTask,
+        completed: false,
+        dueDate,
+        priority,
+        id: new Date().toISOString(), // Generate a unique ID for the task
+      };
+
       if (editIndex !== null) {
-        const updatedTasks = tasks.map((task, index) =>
-          index === editIndex ? { ...task, text: newTask, dueDate, priority } : task
-        );
-        setTasks(updatedTasks);
+        const updatedTask = { ...tasks[editIndex], ...task };
+        updateTask(tasks[editIndex].id, updatedTask); // Update task in Firebase
         setEditIndex(null);
       } else {
-        const updatedTasks = [
-          ...tasks,
-          { text: newTask, completed: false, dueDate, priority }
-        ];
-        setTasks(updatedTasks);
+        addTask(task); // Add new task to Firebase
       }
+
       setNewTask('');
       setDueDate('');
       setPriority('low');
@@ -58,19 +54,16 @@ function App() {
     setTasks(updatedTasks);
   };
 
-  const deleteTask = (index) => {
+  const deleteTaskHandler = (index) => {
+    const taskId = tasks[index].id;
+    deleteTask(taskId); // Delete task from Firebase
     const updatedTasks = tasks.filter((_, i) => i !== index);
     setTasks(updatedTasks);
-    // If tasks array becomes empty, remove tasks from localStorage
-    if (updatedTasks.length === 0) {
-      localStorage.removeItem('tasks');
-    }
   };
 
   const clearAllTasks = () => {
     if (window.confirm("Are you sure you want to clear all tasks?")) {
       setTasks([]);
-      localStorage.removeItem('tasks'); // Ensure clearing localStorage when clearing all tasks
     }
   };
 
@@ -202,7 +195,7 @@ function App() {
                   <PencilIcon className="h-6 w-6" />
                 </button>
                 <button
-                  onClick={() => deleteTask(index)}
+                  onClick={() => deleteTaskHandler(index)}
                   className="text-red-500 hover:text-red-700 transition"
                   aria-label="Delete task"
                 >

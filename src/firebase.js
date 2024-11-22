@@ -1,6 +1,7 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, setDoc, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc, query, orderBy, onSnapshot } from "firebase/firestore";
 
+// Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyBn7J79C1fCLhDv3dQ95RJa39Qf_IH-Au0",
     authDomain: "wrapitup-856e5.firebaseapp.com",
@@ -11,52 +12,40 @@ const firebaseConfig = {
     measurementId: "G-YW884D436J",
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Fetch tasks
+// Fetch all tasks
 export const getTasks = async () => {
-    const querySnapshot = await getDocs(collection(db, 'tasks'));
-    let tasks = [];
-    querySnapshot.forEach((doc) => {
-        tasks.push({ id: doc.id, ...doc.data() });
-    });
-    return tasks;
+  const q = query(collection(db, "tasks"), orderBy("dueDate"));
+  const querySnapshot = await getDocs(q);
+  const tasks = querySnapshot.docs.map(doc => doc.data());
+  return tasks;
 };
 
-// Add task
+// Listen for real-time updates
+export const listenForTasks = (callback) => {
+  const unsubscribe = onSnapshot(collection(db, "tasks"), (snapshot) => {
+    const tasks = snapshot.docs.map(doc => doc.data());
+    callback(tasks);
+  });
+  return unsubscribe;
+};
+
+// Add new task
 export const addTask = async (task) => {
-    await setDoc(doc(db, 'tasks', task.id), task);
+  await addDoc(collection(db, "tasks"), task);
 };
 
-// Update task
-export const updateTask = async (id, task) => {
-    const taskRef = doc(db, 'tasks', id);
-    await updateDoc(taskRef, task);
+// Update existing task
+export const updateTask = async (id, updatedTask) => {
+  const taskDoc = doc(db, "tasks", id);
+  await updateDoc(taskDoc, updatedTask);
 };
 
 // Delete task
 export const deleteTask = async (id) => {
-    const taskRef = doc(db, 'tasks', id);
-    await deleteDoc(taskRef);
+  const taskDoc = doc(db, "tasks", id);
+  await deleteDoc(taskDoc);
 };
-
-// Real-time listener for tasks
-export const listenForTasks = (callback) => {
-    const tasksRef = collection(db, 'tasks');
-    return onSnapshot(tasksRef, (snapshot) => {
-        const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        callback(tasks);
-    });
-};
-
-const tasksRef = collection(db, 'tasks');
-onSnapshot(tasksRef, (snapshot) => {
-  if (!snapshot || !snapshot.docs) {
-    console.error('Snapshot or docs are undefined');
-    return;
-  }
-
-  const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  callback(tasks);
-});
