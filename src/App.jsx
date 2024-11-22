@@ -218,5 +218,3 @@ function App() {
 }
 
 export default App;
-
-this is my to do list app
