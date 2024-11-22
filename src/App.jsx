@@ -1,108 +1,126 @@
 import { useState, useEffect } from 'react';
 import { PencilIcon, TrashIcon } from '@heroicons/react/solid';
-import { getTasks, addTask, updateTask, deleteTask, listenForTasks } from './firebase';
+import { signInWithGoogle, signOutUser, listenForTasks, addTask, updateTask, deleteTask } from './firebase';
 
 function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
-  const [editIndex, setEditIndex] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [user, setUser] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('low');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isPriorityAsc, setIsPriorityAsc] = useState(true);
   const [isDueDateAsc, setIsDueDateAsc] = useState(true);
 
-  // Fetch tasks from Firebase in real-time
   useEffect(() => {
-    const unsubscribe = listenForTasks((fetchedTasks) => {
-      setTasks(fetchedTasks);
-    });
-    return () => unsubscribe(); // Cleanup the listener on unmount
-  }, []);
+    if (user) {
+      const unsubscribe = listenForTasks(user.uid, (fetchedTasks) => {
+        setTasks(fetchedTasks); // Set state when tasks are updated
+      });
+      return () => unsubscribe(); // Cleanup the listener on unmount
+    }
+  }, [user]); // This will rerun when user changes
 
-  const addOrUpdateTask = () => {
+
+  const handleLogin = async () => {
+    try {
+      const loggedInUser = await signInWithGoogle();
+      setUser(loggedInUser);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      setUser(null);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const addOrUpdateTask = async () => {
     if (newTask.trim()) {
       const task = {
         text: newTask,
         completed: false,
         dueDate,
         priority,
-        id: new Date().toISOString(), // Generate a unique ID for the task
+        userId: user.uid,
+        id: new Date().toISOString(),
       };
 
-      if (editIndex !== null) {
-        const updatedTask = { ...tasks[editIndex], ...task };
-        updateTask(tasks[editIndex].id, updatedTask); // Update task in Firebase
-        setEditIndex(null);
-      } else {
-        addTask(task); // Add new task to Firebase
+      // Add task to Firestore
+      try {
+        await addTask(task); // Firebase add task function
+        setNewTask(''); // Reset input field after adding
+        setDueDate(''); // Reset due date
+        setPriority('low'); // Reset priority
+      } catch (error) {
+        console.error('Error adding task:', error);
       }
-
-      setNewTask('');
-      setDueDate('');
-      setPriority('low');
     } else {
-      alert("Task cannot be empty!");
+      alert('Task cannot be empty!');
     }
   };
 
-  const toggleTaskCompletion = (index) => {
-    const updatedTasks = tasks.map((task, i) =>
-      i === index ? { ...task, completed: !task.completed } : task
-    );
-    setTasks(updatedTasks);
-  };
 
   const deleteTaskHandler = (index) => {
     const taskId = tasks[index].id;
-    deleteTask(taskId); // Delete task from Firebase
+    deleteTask(taskId);
     const updatedTasks = tasks.filter((_, i) => i !== index);
     setTasks(updatedTasks);
   };
 
-  const clearAllTasks = () => {
-    if (window.confirm("Are you sure you want to clear all tasks?")) {
-      setTasks([]);
-    }
+  const toggleTheme = () => {
+    setDarkMode(!darkMode);
   };
 
   const sortTasksByPriority = () => {
-    const sortedTasks = [...tasks];
-    const priorityOrder = ['low', 'medium', 'high'];
-    sortedTasks.sort((a, b) => {
-      const aIndex = priorityOrder.indexOf(a.priority);
-      const bIndex = priorityOrder.indexOf(b.priority);
-      return isPriorityAsc ? aIndex - bIndex : bIndex - aIndex;
+    const sortedTasks = [...tasks].sort((a, b) => {
+      if (isPriorityAsc) {
+        return a.priority.localeCompare(b.priority);
+      }
+      return b.priority.localeCompare(a.priority);
     });
     setTasks(sortedTasks);
     setIsPriorityAsc(!isPriorityAsc);
   };
 
   const sortTasksByDueDate = () => {
-    const sortedTasks = [...tasks];
-    sortedTasks.sort((a, b) => {
-      const dateA = new Date(a.dueDate);
-      const dateB = new Date(b.dueDate);
-      return isDueDateAsc ? dateA - dateB : dateB - dateA;
+    const sortedTasks = [...tasks].sort((a, b) => {
+      if (isDueDateAsc) {
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      }
+      return new Date(b.dueDate) - new Date(a.dueDate);
     });
     setTasks(sortedTasks);
     setIsDueDateAsc(!isDueDateAsc);
   };
 
-  const filteredTasks = tasks.filter(task => task.text.toLowerCase().includes(searchQuery.toLowerCase()));
-
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
+  const clearAllTasks = () => {
+    tasks.forEach((task) => deleteTask(task.id));
+    setTasks([]);
   };
 
-  const handleDateChange = (e) => {
-    const value = e.target.value;
-    const regex = /^(\d{2})-(\d{2})-(\d{4})$/;
-    if (regex.test(value) || value === '') {
-      setDueDate(value);
-    }
-  };
+  const filteredTasks = tasks.filter((task) =>
+    task.text.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <button
+          onClick={handleLogin}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition"
+        >
+          Login with Google
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'} flex flex-col items-center px-4 py-8 transition-all`}>
@@ -142,7 +160,7 @@ function App() {
           </select>
         </div>
         <button onClick={addOrUpdateTask} className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition w-full sm:w-auto">
-          {editIndex !== null ? 'Save Changes' : 'Add Task'}
+          Add Task
         </button>
       </div>
 
@@ -184,7 +202,6 @@ function App() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    setEditIndex(index);
                     setNewTask(task.text);
                     setDueDate(task.dueDate);
                     setPriority(task.priority);
@@ -206,6 +223,13 @@ function App() {
           </li>
         ))}
       </ul>
+
+      <button
+        onClick={handleLogout}
+        className="my-10 px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition"
+      >
+        Logout
+      </button>
     </div>
   );
 }
