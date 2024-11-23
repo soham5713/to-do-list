@@ -1,242 +1,310 @@
-import { useState, useEffect } from 'react';
-import { PencilIcon, TrashIcon } from '@heroicons/react/solid';
-import { signInWithGoogle, signOutUser, listenForTasks, addTask, deleteTask, getCurrentUser } from './firebase';
+import React, { useState, useEffect } from "react";
+import { PencilIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/solid";
+import { initializeApp } from "firebase/app";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
 
-function App() {
-  const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState('');
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBn7J79C1fCLhDv3dQ95RJa39Qf_IH-Au0",
+  authDomain: "wrapitup-856e5.firebaseapp.com",
+  projectId: "wrapitup-856e5",
+  storageBucket: "wrapitup-856e5.firebasestorage.app",
+  messagingSenderId: "992982213619",
+  appId: "1:992982213619:web:214e848c8a7e8f23eca886",
+  measurementId: "G-YW884D436J",
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+const App = () => {
   const [user, setUser] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
-  const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState('low');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isPriorityAsc, setIsPriorityAsc] = useState(true);
-  const [isDueDateAsc, setIsDueDateAsc] = useState(true);
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState("");
+  const [priority, setPriority] = useState("low");
+  const [dueDate, setDueDate] = useState("");
+  const [editIndex, setEditIndex] = useState(null);
+  const [sortOrderDate, setSortOrderDate] = useState("asc"); // for date sorting
+  const [sortOrderPriority, setSortOrderPriority] = useState("asc"); // for priority sorting
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser); // Set the user if they are already logged in
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      const unsubscribe = listenForTasks(user.uid, (fetchedTasks) => {
-        setTasks(fetchedTasks); // Set state when tasks are updated
-      });
-      return () => unsubscribe(); // Cleanup the listener on unmount
-    }
-  }, [user]); // This will rerun when user changes
-  
-  const handleLogin = async () => {
+  // Login with Google
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
     try {
-      const loggedInUser = await signInWithGoogle();
-      setUser(loggedInUser);
+      const result = await signInWithPopup(auth, provider);
+      setUser(result.user);
     } catch (error) {
-      console.error(error);
+      console.error("Login failed:", error);
     }
   };
 
+  // Logout
   const handleLogout = async () => {
     try {
-      await signOutUser();
+      await signOut(auth);
       setUser(null);
+      setTasks([]);
     } catch (error) {
-      console.error(error);
+      console.error("Logout failed:", error);
     }
   };
 
-  const addOrUpdateTask = async () => {
-    if (newTask.trim()) {
-      const task = {
-        text: newTask,
-        completed: false,
-        dueDate,
-        priority,
-        userId: user.uid,
-        id: new Date().toISOString(),
-      };
-  
-      // Add task to Firestore
-      try {
-        await addTask(task); // Firebase add task function
-        setNewTask(''); // Reset input field after adding
-        setDueDate(''); // Reset due date
-        setPriority('low'); // Reset priority
-      } catch (error) {
-        console.error('Error adding task:', error);
+  // Sync tasks with Firestore
+  const syncTasks = async (uid) => {
+    const docRef = doc(db, "users", uid);
+    try {
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setTasks(docSnap.data().tasks || []);
+      } else {
+        await setDoc(docRef, { tasks: [] });
       }
-    } else {
-      alert('Task cannot be empty!');
+    } catch (error) {
+      console.error("Error syncing tasks:", error);
     }
   };
 
-  const deleteTaskHandler = (index) => {
-    const taskId = tasks[index].id;
-    deleteTask(taskId);
+  const updateFirestoreTasks = async (uid, updatedTasks) => {
+    const docRef = doc(db, "users", uid);
+    try {
+      await updateDoc(docRef, { tasks: updatedTasks });
+    } catch (error) {
+      console.error("Error updating tasks in Firestore:", error);
+    }
+  };
+
+  // Add or Update Task
+  const addOrUpdateTask = () => {
+    if (!newTask) return;
+    const updatedTasks = [...tasks];
+    if (editIndex !== null) {
+      updatedTasks[editIndex] = {
+        text: newTask,
+        priority,
+        dueDate,
+        completed: tasks[editIndex].completed,
+      };
+      setEditIndex(null);
+    } else {
+      updatedTasks.push({
+        text: newTask,
+        priority,
+        dueDate,
+        completed: false,
+      });
+    }
+    setTasks(updatedTasks);
+    updateFirestoreTasks(user.uid, updatedTasks);
+    setNewTask("");
+    setPriority("low");
+    setDueDate("");
+  };
+
+  // Delete Task
+  const deleteTask = (index) => {
     const updatedTasks = tasks.filter((_, i) => i !== index);
     setTasks(updatedTasks);
+    updateFirestoreTasks(user.uid, updatedTasks);
   };
 
-  const toggleTheme = () => {
-    setDarkMode(!darkMode);
+  // Toggle Task Completion
+  const toggleTaskCompletion = (index) => {
+    const updatedTasks = [...tasks];
+    updatedTasks[index].completed = !updatedTasks[index].completed;
+    setTasks(updatedTasks);
+    updateFirestoreTasks(user.uid, updatedTasks);
   };
 
-  const sortTasksByPriority = () => {
-    const sortedTasks = [...tasks].sort((a, b) => {
-      if (isPriorityAsc) {
-        return a.priority.localeCompare(b.priority);
-      }
-      return b.priority.localeCompare(a.priority);
-    });
-    setTasks(sortedTasks);
-    setIsPriorityAsc(!isPriorityAsc);
-  };
-
-  const sortTasksByDueDate = () => {
-    const sortedTasks = [...tasks].sort((a, b) => {
-      if (isDueDateAsc) {
-        return new Date(a.dueDate) - new Date(b.dueDate);
-      }
-      return new Date(b.dueDate) - new Date(a.dueDate);
-    });
-    setTasks(sortedTasks);
-    setIsDueDateAsc(!isDueDateAsc);
-  };
-
-  const clearAllTasks = () => {
-    tasks.forEach((task) => deleteTask(task.id));
-    setTasks([]);
-  };
-
-  const filteredTasks = tasks.filter((task) =>
-    task.text.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (!user) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <button
-          onClick={handleLogin}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition"
-        >
-          Login with Google
-        </button>
-      </div>
+  // Sort Tasks by Due Date
+  const sortByDate = () => {
+    const sortedTasks = [...tasks].sort((a, b) =>
+      sortOrderDate === "asc"
+        ? new Date(a.dueDate) - new Date(b.dueDate)
+        : new Date(b.dueDate) - new Date(a.dueDate)
     );
-  }
+    setTasks(sortedTasks);
+    setSortOrderDate(sortOrderDate === "asc" ? "desc" : "asc"); // Toggle the sort order
+  };
+
+  // Sort Tasks by Priority
+  const sortByPriority = () => {
+    const priorityOrder = { high: 1, medium: 2, low: 3 };
+    const sortedTasks = [...tasks].sort(
+      (a, b) =>
+        sortOrderPriority === "asc"
+          ? priorityOrder[a.priority] - priorityOrder[b.priority]
+          : priorityOrder[b.priority] - priorityOrder[a.priority]
+    );
+    setTasks(sortedTasks);
+    setSortOrderPriority(sortOrderPriority === "asc" ? "desc" : "asc"); // Toggle the sort order
+  };
+
+  // Add the clearAllTasks function
+  const clearAllTasks = () => {
+    setTasks([]); // Clear the tasks in state
+    if (user) {
+      updateFirestoreTasks(user.uid, []); // Update Firestore to clear tasks
+    }
+  };
+
+  // Load User on Auth State Change
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        syncTasks(currentUser.uid);
+      } else {
+        setUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'} flex flex-col items-center px-4 py-8 transition-all`}>
-      <button onClick={toggleTheme} className="absolute w-10 h-10 top-auto right-4 bg-gray-800 text-white rounded-full shadow-md hover:bg-gray-700">
-        {darkMode ? "🌙" : "🌞"}
-      </button>
-      <h1 className="text-4xl font-semibold mb-6 text-center">My To-Do List</h1>
-
-      <div className="flex flex-col sm:flex-row gap-4 mb-4 w-full max-w-4xl px-4 items-center justify-center">
-        <input
-          type="text"
-          value={newTask}
-          onChange={(e) => setNewTask(e.target.value)}
-          placeholder="Add a new task..."
-          className="text-black px-4 py-2 border rounded-lg shadow-sm w-full sm:w-72 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className={`px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${darkMode ? 'text-white' : 'bg-white text-black'}`}
-          />
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            className="px-4 py-2 border rounded-md shadow-sm w-32 pl-6 pr-10 appearance-none bg-white text-black"
-            style={{
-              backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 width=%2224%22 height=%2224%22%3E%3Cpath d=%22M7 10l5 5 5-5z%22/%3E%3C/svg%3E")',
-              backgroundPosition: 'right 10px center',
-              backgroundRepeat: 'no-repeat',
-            }}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+      {/* Login/Logout Button */}
+      <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg space-y-4">
+        <h1 className="text-2xl font-bold text-gray-800">Your To-Do List</h1>
+        {!user ? (
+          <button
+            onClick={loginWithGoogle}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition"
           >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-        </div>
-        <button onClick={addOrUpdateTask} className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition w-full sm:w-auto">
-          Add Task
-        </button>
+            Login with Google
+          </button>
+        ) : (
+          <button
+            onClick={handleLogout}
+            className="px-6 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition"
+          >
+            Logout
+          </button>
+        )}
       </div>
 
-      <input
-        type="text"
-        placeholder="Search tasks..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="px-4 py-2 border rounded-lg shadow-sm w-full sm:w-72 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      {/* Task Form */}
+      {user && (
+        <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg space-y-4">
+          <div className="flex gap-4">
+            <input
+              type="text"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              placeholder="Add a new task"
+              className="flex-1 px-4 py-2 border rounded-lg"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  addOrUpdateTask(); // Call the function to add or update the task
+                }
+              }}
+            />
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="px-4 py-2 border rounded-lg"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="px-4 py-2 border rounded-lg"
+            />
+            <button
+              onClick={addOrUpdateTask}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+            >
+              {editIndex !== null ? "Update Task" : "Add Task"}
+            </button>
+          </div>
 
-      <div className="flex gap-4 mb-4 w-full justify-center">
-        <button onClick={sortTasksByDueDate} className="px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition w-auto">
-          Sort by Due Date {isDueDateAsc ? '↑' : '↓'}
-        </button>
-        <button onClick={sortTasksByPriority} className="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-md hover:bg-yellow-600 transition w-auto">
-          Sort by Priority {isPriorityAsc ? '↑' : '↓'}
-        </button>
-        <button onClick={clearAllTasks} className="px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition w-auto">
-          Clear All Tasks
-        </button>
-      </div>
+          {/* Sorting Buttons */}
+          <div className="flex gap-4 mt-4">
+            <button
+              onClick={sortByDate}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition flex items-center"
+            >
+              Sort by Date
+              {sortOrderDate === "asc" ? (
+                <ChevronDownIcon className="h-5 w-5 ml-2" />
+              ) : (
+                <ChevronUpIcon className="h-5 w-5 ml-2" />
+              )}
+            </button>
+            <button
+              onClick={sortByPriority}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition flex items-center"
+            >
+              Sort by Priority
+              {sortOrderPriority === "asc" ? (
+                <ChevronDownIcon className="h-5 w-5 ml-2" />
+              ) : (
+                <ChevronUpIcon className="h-5 w-5 ml-2" />
+              )}
+            </button>
+            {/* Clear All Tasks Button */}
+            <button
+              onClick={clearAllTasks}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+            >
+              Clear All Tasks
+            </button>
+          </div>
 
-      <ul className="w-full max-w-4xl space-y-4">
-        {filteredTasks.map((task, index) => (
-          <li
-            key={index}
-            className={`flex justify-between items-center px-4 py-2 border-b rounded-lg transition-all ease-in-out ${task.completed
-              ? 'bg-green-100 hover:bg-green-100 opacity-80 line-through text-gray-500'
-              : 'bg-white hover:bg-gray-100'} `}
-          >
-            <div className="flex justify-between items-center w-full">
-              <span
+          {/* Task List */}
+          <div className="mt-6 space-y-4">
+            {tasks.map((task, index) => (
+              <div
+                key={index}
+                className={`flex items-center justify-between p-4 rounded-lg shadow-md ${task.completed ? "bg-green-100 line-through text-gray-400" : ""
+                  }`}
                 onClick={() => toggleTaskCompletion(index)}
-                className={`text-black cursor-pointer text-lg ${task.completed ? 'line-through text-gray-500' : ''}`}
               >
-                {task.text}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setNewTask(task.text);
-                    setDueDate(task.dueDate);
-                    setPriority(task.priority);
-                  }}
-                  className="text-yellow-500 hover:text-yellow-700 transition"
-                  aria-label="Edit task"
-                >
-                  <PencilIcon className="h-6 w-6" />
-                </button>
-                <button
-                  onClick={() => deleteTaskHandler(index)}
-                  className="text-red-500 hover:text-red-700 transition"
-                  aria-label="Delete task"
-                >
-                  <TrashIcon className="h-6 w-6" />
-                </button>
+                <span className="flex-1 cursor-pointer">{task.text}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => deleteTask(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewTask(task.text);
+                      setPriority(task.priority);
+                      setDueDate(task.dueDate);
+                      setEditIndex(index);
+                    }}
+                    className="text-blue-500 hover:text-blue-700"
+                  >
+                    <PencilIcon className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-      
-      <button
-        onClick={handleLogout}
-        className="my-10 px-4 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition"
-      >
-        Logout
-      </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default App;
