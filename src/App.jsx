@@ -19,7 +19,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
-  const [priority, setPriority] = useState("low");
+  const [priority, setPriority] = useState("Select Priority");
   const [dueDate, setDueDate] = useState("");
   const [editIndex, setEditIndex] = useState(null);
   const [sortOrderDate, setSortOrderDate] = useState("asc");
@@ -72,33 +72,33 @@ const App = () => {
 
   // Add or Update Task
   // Add or Update Task
-const addOrUpdateTask = () => {
-  if (!newTask) return;
-  const updatedTasks = [...tasks];
-  if (editIndex !== null) {
-    updatedTasks[editIndex] = {
-      text: newTask,
-      priority,
-      dueDate,
-      completed: tasks[editIndex].completed,
-    };
-    setEditIndex(null);
-  } else {
-    updatedTasks.push({
-      text: newTask,
-      priority,
-      dueDate,
-      completed: false,
-    });
-  }
-  // Sort tasks by completion status (completed tasks go to the end)
-  updatedTasks.sort((a, b) => a.completed - b.completed);
-  setTasks(updatedTasks);
-  updateFirestoreTasks(user.uid, updatedTasks);
-  setNewTask("");
-  setPriority("low");
-  setDueDate("");
-};
+  const addOrUpdateTask = () => {
+    if (!newTask) return;
+    const updatedTasks = [...tasks];
+    if (editIndex !== null) {
+      updatedTasks[editIndex] = {
+        text: newTask,
+        priority,
+        dueDate,
+        completed: tasks[editIndex].completed,
+      };
+      setEditIndex(null);
+    } else {
+      updatedTasks.push({
+        text: newTask,
+        priority,
+        dueDate,
+        completed: false,
+      });
+    }
+    // Sort tasks by completion status (completed tasks go to the end)
+    updatedTasks.sort((a, b) => a.completed - b.completed);
+    setTasks(updatedTasks);
+    updateFirestoreTasks(user.uid, updatedTasks);
+    setNewTask("");
+    setPriority("Select Priority");
+    setDueDate("");
+  };
 
   // Delete Task
   const deleteTask = (index) => {
@@ -108,14 +108,14 @@ const addOrUpdateTask = () => {
   };
 
   // Toggle Task Completion
-const toggleTaskCompletion = (index) => {
-  const updatedTasks = [...tasks];
-  updatedTasks[index].completed = !updatedTasks[index].completed;
-  // Sort tasks by completion status after toggling
-  updatedTasks.sort((a, b) => a.completed - b.completed);
-  setTasks(updatedTasks);
-  updateFirestoreTasks(user.uid, updatedTasks);
-};
+  const toggleTaskCompletion = (index) => {
+    const updatedTasks = [...tasks];
+    updatedTasks[index].completed = !updatedTasks[index].completed;
+    // Sort tasks by completion status after toggling
+    updatedTasks.sort((a, b) => a.completed - b.completed);
+    setTasks(updatedTasks);
+    updateFirestoreTasks(user.uid, updatedTasks);
+  };
 
   // Sort Tasks by Due Date
   const sortByDate = () => {
@@ -172,7 +172,7 @@ const toggleTaskCompletion = (index) => {
       {/* Login/Logout Section */}
       <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg space-y-4">
         <h1 className="text-2xl font-bold text-gray-800 text-center">
-          Your To-Do List
+          Wrap-It-Up
         </h1>
         {!user ? (
           <button
@@ -207,34 +207,34 @@ const toggleTaskCompletion = (index) => {
                 }
               }}
               placeholder="Add a new task"
-              className="flex-1 px-4 py-2 border rounded-lg w-full sm:w-auto"
+              className={`flex-1 px-4 py-2 border rounded-lg w-full sm:w-auto ${newTask ? "text-black" : "text-gray-400"}`}
             />
 
-
             {/* Priority and Due Date Inputs (for mobile: stacked, for desktop: inline) */}
-            <div className="flex flex-col sm:flex-row sm:gap-4 gap-4">
-              {/* Priority Dropdown */}
-              <div className="relative flex items-center sm:w-auto w-full">
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="px-4 py-2 border rounded-lg w-full appearance-none sm:w-32"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
+            {/* Priority Dropdown */}
+            {/* Priority Dropdown */}
+            <div className="relative flex items-center sm:w-auto w-full">
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className={`bg-white px-4 py-2 border rounded-lg w-full appearance-none sm:w-40 ${priority !== "Select Priority" ? "text-black" : "text-gray-400"}`}
+              >
+                <option value="Select Priority" disabled hidden>
+                  Select Priority
+                </option> {/* Hidden placeholder */}
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
 
-                {/* Chevron Icon */}
-                <div className="absolute right-2 top-3">
-                  {sortOrderPriority === "asc" ? (
-                    <ChevronDownIcon className="h-5 w-5 text-gray-600" />
-                  ) : (
-                    <ChevronUpIcon className="h-5 w-5 text-gray-600" />
-                  )}
-                </div>
+              {/* Chevron Icon */}
+              <div className="absolute right-2 top-3">
+                {sortOrderPriority === "asc" ? (
+                  <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <ChevronUpIcon className="h-5 w-5 text-gray-400" />
+                )}
               </div>
-
             </div>
 
             <div className="relative">
@@ -243,11 +243,9 @@ const toggleTaskCompletion = (index) => {
                 <ReactDatePicker
                   selected={dueDate}
                   onChange={handleDateChange}
-                  placeholderText="Select a date"
-                  className="px-4 py-2 border rounded-lg w-full"
+                  placeholderText="Add a date"
+                  className={`px-4 py-2 border rounded-lg w-full ${dueDate ? "text-black" : "text-gray-400"}`}
                 />
-                {/* Chevron Icon */}
-                <ChevronDownIcon className="absolute right-2 top-1/2 h-5 w-5 transform -translate-y-1/2 text-gray-600" />
               </div>
 
               {/* Native Date Input on Larger Screens */}
@@ -255,7 +253,7 @@ const toggleTaskCompletion = (index) => {
                 type="date"
                 value={dueDate ? dueDate.toISOString().split("T")[0] : ""}
                 onChange={(e) => handleDateChange(new Date(e.target.value))}
-                className="px-4 py-2 border rounded-lg w-full appearance-none sm:w-auto sm:block hidden"
+                className={`text-gray-400 px-4 py-2 border rounded-lg w-full appearance-none sm:w-auto sm:block hidden ${dueDate ? "text-black" : "text-gray-400"}`}
               />
             </div>
 
@@ -303,10 +301,10 @@ const toggleTaskCompletion = (index) => {
           <div className="mt-6 space-y-4">
             {tasks.map((task, index) => (
               <div
-                key={index}
-                className={`flex flex-wrap items-center justify-between p-4 rounded-lg shadow-md ${task.completed
+                key={task.text + task.dueDate} // Ensure a unique key
+                className={`flex flex-wrap items-center justify-between p-4 rounded-lg shadow-md transition-transform transform duration-300 ease-out ${task.completed
                   ? "bg-green-100 line-through text-gray-400"
-                  : ""
+                  : "bg-white hover:scale-[1.01]"
                   }`}
                 onClick={() => toggleTaskCompletion(index)}
               >
@@ -337,6 +335,7 @@ const toggleTaskCompletion = (index) => {
               </div>
             ))}
           </div>
+
 
           {/* Clear All Tasks Button */}
           <button
