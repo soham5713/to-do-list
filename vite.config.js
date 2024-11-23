@@ -6,4 +6,8 @@ export default defineConfig({
   css: {
     postcss: './postcss.config.cjs',
   },
+  server: {
+    host: true,
+  },
 });
+
