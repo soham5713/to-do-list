@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { PencilIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, CalendarIcon } from "@heroicons/react/solid";
+import { PencilIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, ClockIcon, CheckCircleIcon } from "@heroicons/react/solid";
 import { auth, db, provider } from "./firebase";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { TransitionGroup, CSSTransition } from "react-transition-group";
+import "./index.css"; // Add styles for the animations here
 import {
   signInWithPopup,
   signOut,
@@ -111,11 +113,11 @@ const App = () => {
   const toggleTaskCompletion = (index) => {
     const updatedTasks = [...tasks];
     updatedTasks[index].completed = !updatedTasks[index].completed;
-    // Sort tasks by completion status after toggling
-    updatedTasks.sort((a, b) => a.completed - b.completed);
+    updatedTasks.sort((a, b) => a.completed - b.completed); // Keep the completed tasks at the end
     setTasks(updatedTasks);
     updateFirestoreTasks(user.uid, updatedTasks);
   };
+
 
   // Sort Tasks by Due Date
   const sortByDate = () => {
@@ -171,20 +173,20 @@ const App = () => {
     <div className="min-h-screen flex flex-col items-center bg-gray-100 p-4">
       {/* Login/Logout Section */}
       <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg space-y-4">
-        <h1 className="text-2xl font-bold text-gray-800 text-center">
+        <h1 className="mb-4 text-2xl font-bold text-gray-800 text-center">
           Wrap-It-Up
         </h1>
         {!user ? (
           <button
             onClick={loginWithGoogle}
-            className="w-full sm:w-auto px-6 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition"
+            className="block m-auto w-full sm:w-auto px-6 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition"
           >
             Login with Google
           </button>
         ) : (
           <button
             onClick={handleLogout}
-            className="w-full sm:w-auto px-6 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition"
+            className="block m-auto w-full sm:w-auto px-6 py-2 bg-red-500 text-white rounded-lg shadow-md hover:bg-red-600 transition"
           >
             Logout
           </button>
@@ -268,7 +270,6 @@ const App = () => {
         </div>
       )}
 
-      {/* Task List */}
       {user && tasks.length > 0 && (
         <div className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-lg mt-4 space-y-4">
           <h2 className="text-xl font-semibold text-gray-800">Your Tasks</h2>
@@ -298,44 +299,57 @@ const App = () => {
             </button>
           </div>
 
+          {/* Tasks with Transitions */}
           <div className="mt-6 space-y-4">
-            {tasks.map((task, index) => (
-              <div
-                key={task.text + task.dueDate} // Ensure a unique key
-                className={`flex flex-wrap items-center justify-between p-4 rounded-lg shadow-md transition-transform transform duration-300 ease-out ${task.completed
-                  ? "bg-green-100 line-through text-gray-400"
-                  : "bg-white hover:scale-[1.01]"
-                  }`}
-                onClick={() => toggleTaskCompletion(index)}
-              >
-                <span className="flex-1 cursor-pointer">{task.text}</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent toggling task completion
-                      deleteTask(index);
-                    }}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent toggling task completion
-                      setNewTask(task.text);
-                      setPriority(task.priority);
-                      setDueDate(task.dueDate);
-                      setEditIndex(index);
-                    }}
-                    className="text-blue-500 hover:text-blue-700"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+            <TransitionGroup>
+              {tasks.map((task, index) => (
+                <CSSTransition
+                  key={index}
+                  timeout={300} // Duration of the animation
+                  classNames="task" // Class name for animation styles
+                >
 
+                  <div
+                    className={`mt-4 flex flex-wrap items-end justify-between p-4 rounded-lg shadow-md ${task.completed ? "bg-green-100 line-through text-gray-400" : ""}`}
+                    onClick={() => toggleTaskCompletion(index)} // Toggle completion on click
+                  >
+                    <button className="text-green-500 hover:text-green-700">
+                      {task.completed ? (
+                        <CheckCircleIcon className="h-5 w-5 mr-5" /> // Show checked circle if completed
+                      ) : (
+                        <ClockIcon className="h-5 w-5 mr-5 text-yellow-500" /> // Show empty circle if not completed
+                      )}
+                    </button>
+                    <span className="flex-1 cursor-pointer">{task.text}</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent toggling task completion
+                          deleteTask(index);
+                        }}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent toggling task completion
+                          setNewTask(task.text);
+                          setPriority(task.priority);
+                          setDueDate(task.dueDate);
+                          setEditIndex(index);
+                        }}
+                        className="text-blue-500 hover:text-blue-700"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                </CSSTransition>
+              ))}
+            </TransitionGroup>
+          </div>
 
           {/* Clear All Tasks Button */}
           <button

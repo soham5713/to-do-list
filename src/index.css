@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Initial state of the task (when entering) */
+.task-enter {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+/* End state of the task (after entering) */
+.task-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 300ms, transform 300ms;
+}
+
+/* Initial state of the task (when exiting) */
+.task-exit {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* End state of the task (after exiting) */
+.task-exit-active {
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 300ms, transform 300ms;
+}
