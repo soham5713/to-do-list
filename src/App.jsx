@@ -331,7 +331,7 @@ const App = () => {
                   classNames="task" // Class name for animation styles
                 >
                   <div
-                    className={`mt-4 flex flex-wrap items-end justify-between p-4 rounded-lg shadow-md ${task.completed ? "bg-green-100 line-through text-gray-400" : ""
+                    className={`mt-4 flex flex-wrap items-center justify-between p-4 rounded-lg shadow-md ${task.completed ? "bg-green-100 line-through text-gray-400" : ""
                       }`}
                     onClick={() => toggleTaskCompletion(index)} // Toggle completion on click
                   >
