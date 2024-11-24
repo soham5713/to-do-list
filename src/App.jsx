@@ -156,6 +156,28 @@ const App = () => {
     }
   };
 
+  const renderTextWithLinks = (text) => {
+    const urlRegex = /(https?:\/\/[^\s]+|[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?=\s|$)/g;
+    return text.split(urlRegex).map((part, index) => {
+      if (urlRegex.test(part)) {
+        const formattedUrl = /^https?:\/\//.test(part) ? part : `http://${part}`;
+        return (
+          <a
+            key={index}
+            href={formattedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   // Load User on Auth State Change
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -255,7 +277,7 @@ const App = () => {
                 type="date"
                 value={dueDate ? dueDate.toISOString().split("T")[0] : ""}
                 onChange={(e) => handleDateChange(new Date(e.target.value))}
-                className={`text-gray-400 px-4 py-2 border rounded-lg w-full appearance-none sm:w-auto sm:block hidden ${dueDate ? "text-black" : "text-gray-400"}`}
+                className={`text-black px-4 py-2 border rounded-lg w-full appearance-none sm:w-auto sm:block hidden ${dueDate ? "text-black" : "text-gray-400"}`}
               />
             </div>
 
@@ -308,9 +330,9 @@ const App = () => {
                   timeout={300} // Duration of the animation
                   classNames="task" // Class name for animation styles
                 >
-
                   <div
-                    className={`mt-4 flex flex-wrap items-end justify-between p-4 rounded-lg shadow-md ${task.completed ? "bg-green-100 line-through text-gray-400" : ""}`}
+                    className={`mt-4 flex flex-wrap items-end justify-between p-4 rounded-lg shadow-md ${task.completed ? "bg-green-100 line-through text-gray-400" : ""
+                      }`}
                     onClick={() => toggleTaskCompletion(index)} // Toggle completion on click
                   >
                     <button className="text-green-500 hover:text-green-700">
@@ -320,7 +342,10 @@ const App = () => {
                         <ClockIcon className="h-5 w-5 mr-5 text-yellow-500" /> // Show empty circle if not completed
                       )}
                     </button>
-                    <span className="flex-1 cursor-pointer">{task.text}</span>
+                    <span className="flex-1 cursor-pointer"
+                    >
+                      {renderTextWithLinks(task.text)}
+                    </span>
                     <div className="flex gap-2">
                       <button
                         onClick={(e) => {
@@ -345,9 +370,9 @@ const App = () => {
                       </button>
                     </div>
                   </div>
-
                 </CSSTransition>
               ))}
+
             </TransitionGroup>
           </div>
 
@@ -359,8 +384,9 @@ const App = () => {
             Clear All Tasks
           </button>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 };
 
