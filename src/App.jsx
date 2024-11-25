@@ -40,6 +40,9 @@ const App = () => {
 
   // Logout
   const handleLogout = async () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (!confirmed) return;
+
     try {
       await signOut(auth);
       setUser(null);
@@ -110,6 +113,9 @@ const App = () => {
 
   // Delete Task
   const deleteTask = (index) => {
+    const confirmed = window.confirm("Are you sure you want to delete this task?");
+    if (!confirmed) return;
+
     const updatedTasks = tasks.filter((_, i) => i !== index);
     setTasks(updatedTasks);
     updateFirestoreTasks(user.uid, updatedTasks);
@@ -156,6 +162,9 @@ const App = () => {
 
   // Clear All Tasks
   const clearAllTasks = () => {
+    const confirmed = window.confirm("Are you sure you want to clear all tasks?");
+    if (!confirmed) return;
+
     setTasks([]);
     if (user) {
       updateFirestoreTasks(user.uid, []);
