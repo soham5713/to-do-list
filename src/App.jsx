@@ -311,7 +311,7 @@ const App = () => {
             <button
               onClick={sortByPriority}
               className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition flex items-center"
-            >
+            > 
               Sort by Priority
               {sortOrderPriority === "asc" ? (
                 <ChevronDownIcon className="h-5 w-5 ml-2" />
@@ -342,7 +342,7 @@ const App = () => {
                         <ClockIcon className="h-5 w-5 mr-5 text-yellow-500" /> // Show empty circle if not completed
                       )}
                     </button>
-                    <span className="flex-1 cursor-pointer"
+                    <span className="flex-1 cursor-pointer break-all"
                     >
                       {renderTextWithLinks(task.text)}
                     </span>
