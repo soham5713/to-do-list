@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { PencilIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon, ClockIcon, CheckCircleIcon } from "@heroicons/react/solid";
 import { auth, db, provider } from "./firebase";
 import ReactDatePicker from "react-datepicker";
+import { Timestamp } from "firebase/firestore";
 import "react-datepicker/dist/react-datepicker.css";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
 import "./index.css"; // Add styles for the animations here
@@ -54,7 +55,12 @@ const App = () => {
     try {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setTasks(docSnap.data().tasks || []);
+        const tasksFromDB = docSnap.data().tasks || [];
+        const formattedTasks = tasksFromDB.map((task) => ({
+          ...task,
+          dueDate: task.dueDate ? task.dueDate.toDate() : null, // Convert Firestore Timestamp to Date
+        }));
+        setTasks(formattedTasks);
       } else {
         await setDoc(docRef, { tasks: [] });
       }
@@ -62,6 +68,7 @@ const App = () => {
       console.error("Error syncing tasks:", error);
     }
   };
+
 
   const updateFirestoreTasks = async (uid, updatedTasks) => {
     const docRef = doc(db, "users", uid);
@@ -81,7 +88,7 @@ const App = () => {
       updatedTasks[editIndex] = {
         text: newTask,
         priority,
-        dueDate,
+        dueDate: dueDate ? Timestamp.fromDate(new Date(dueDate)) : null, // Convert to Firestore Timestamp
         completed: tasks[editIndex].completed,
       };
       setEditIndex(null);
@@ -89,11 +96,10 @@ const App = () => {
       updatedTasks.push({
         text: newTask,
         priority,
-        dueDate,
+        dueDate: dueDate ? Timestamp.fromDate(new Date(dueDate)) : null, // Convert to Firestore Timestamp
         completed: false,
       });
     }
-    // Sort tasks by completion status (completed tasks go to the end)
     updatedTasks.sort((a, b) => a.completed - b.completed);
     setTasks(updatedTasks);
     updateFirestoreTasks(user.uid, updatedTasks);
@@ -311,7 +317,7 @@ const App = () => {
             <button
               onClick={sortByPriority}
               className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition flex items-center"
-            > 
+            >
               Sort by Priority
               {sortOrderPriority === "asc" ? (
                 <ChevronDownIcon className="h-5 w-5 ml-2" />
