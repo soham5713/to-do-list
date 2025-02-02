@@ -27,7 +27,7 @@ const App = () => {
   const [editIndex, setEditIndex] = useState(null);
   const [sortOrderDate, setSortOrderDate] = useState("asc");
   const [sortOrderPriority, setSortOrderPriority] = useState("asc");
-
+  
   // Login with Google
   const loginWithGoogle = async () => {
     try {
