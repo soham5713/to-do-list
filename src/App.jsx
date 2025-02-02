@@ -5,7 +5,7 @@ import ReactDatePicker from "react-datepicker";
 import { Timestamp } from "firebase/firestore";
 import "react-datepicker/dist/react-datepicker.css";
 import { TransitionGroup, CSSTransition } from "react-transition-group";
-import "./index.css"; // Add styles for the animations here
+
 import {
   signInWithPopup,
   signOut,
